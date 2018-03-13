@@ -54,7 +54,7 @@ class Server(socket.socket):
         self.conn.send(byte)
 
     def receive(self):
-        data = self.conn.receive(8)
+        data = self.conn.recv(8)
 
         return data
 
