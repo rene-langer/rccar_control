@@ -36,42 +36,46 @@ if __name__ == '__main__':
     while not server.termination_pending:
         print("\tWaiting for incoming connection...")
 
-        (conn, (ip, port)) = server.accept()
+        # wait until a connection is established
+        server.await_connection()
 
-        session_active = True
-        print("\tAccepted connection from {}:{}".format(ip, port))
+        # to be removed after test
+        # (conn, (ip, port)) = server.accept()
 
-        while session_active:
+        while server.connection_active:
             # receive a maximum of 1 byte for data type
-            data_type = conn.recv(1)
+            data_type = server.receive()
 
             if data_type == server.SERVER_REQUEST:
-                conn.send(server.SERVER_READY)
+                server.send(server.SERVER_READY)
 
                 # receive 3-byte data frame
-                data = conn.recv(3)
+                data = server.receive()
+                print("len: ", len(data))
 
-                servo_control.set_values(data[0], data[1], data[2])
+                if len(data) == 3:
+                    servo_control.set_values(data[0], data[1], data[2])
+                else:
+                    continue
 
                 # if last bit of byte 3 is set cancel connection
                 if data[2] & 1 == 1:
-                    session_active = False
                     print("\nSession is going to be terminated.")
-                    conn.send(server.SERVER_CONNECTION_CLOSED)
-                    time.sleep()
+                    server.send(server.SERVER_CONNECTION_CLOSED)
+                    server.close_connection()
 
                 # if second-last bit of byte 3 is set,
                 # terminate communication and server
                 if data[2] & 2 == 2:
                     print("\nTerminating session and shutting down server application")
-                    session_active = False
                     server.termination_pending = True
-                    conn.send(server.SERVER_CONNECTION_CLOSED)
+                    server.send(server.SERVER_CONNECTION_CLOSED)
+                    server.close_connection()
 
                 else:
                     # send done code 0x12
                     print("Data: 0x{0:x};0x{1:x};0x{2:x}\r".format(data[0], data[1], data[2]), end="", flush=True)
-                    conn.send(server.SERVER_FINISHED)
+                    server.send(server.SERVER_FINISHED)
 
             else:
                 # not known, do nothing

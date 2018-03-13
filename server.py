@@ -40,10 +40,41 @@ class Server(socket.socket):
                 self.running = False
                 time.sleep(1)
 
+        self.conn = None
+        self.client_ip = None
+        self.client_port = None
+        self.connection_active = False
+
         # only accept one connection at a time
         self.listen(1)
 
         self.termination_pending = False
+
+    def send_byte(self, byte):
+        self.conn.send(byte)
+
+    def receive(self):
+        data = self.conn.receive(8)
+
+        return data
+
+    def await_connection(self):
+        if not self.connection_active:
+            (self.conn, (self.client_ip, self.client_port)) = self.accept()
+            print("\tAccepted connection from {}:{}".format(self.client_ip, self.client_port))
+            self.connection_active = True
+        else:
+            print("Cannot accept connection due another connection is still active")
+
+    def close_connection(self):
+        if self.connection_active:
+            self.conn = None
+            self.client_ip = None
+            self.client_port = None
+            self.connection_active = False
+            print("Connection to client closed")
+        else:
+            print("Could not close connection: No connection established.")
 
     def __del__(self):
         self.close()
