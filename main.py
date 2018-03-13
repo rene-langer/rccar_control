@@ -1,5 +1,5 @@
-import Draft_0_6.servo as servo
-import Draft_0_6.server as server
+import servo as servo
+import server as server
 
 import time
 
