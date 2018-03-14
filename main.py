@@ -1,20 +1,7 @@
-import servo as servo
-import server as server
+import servo
+import server
 
 import time
-
-"""
-CHANGELOG:
-
-#1: Removed 1 second delay before sending SERVER_CONNECTION_CLOSED at disconnect
-#2: Edited constant byte values to server constants. See #1 in server class
-"""
-
-
-def debug_print(message: str, mode: bool):
-    if mode:
-        print(message)
-
 
 if __name__ == '__main__':
     IP_ADDRESS = "192.168.4.1"
@@ -33,53 +20,54 @@ if __name__ == '__main__':
 
     print("### Initialization finished in {:1.4f} seconds".format((time.time()-start_time)))
     print("##########################################################\n\n")
+
     while not server.termination_pending:
         print("\tWaiting for incoming connection...")
 
         # wait until a connection is established
         server.await_connection()
 
-        # to be removed after test
-        # (conn, (ip, port)) = server.accept()
-
         while server.connection_active:
-            # receive a maximum of 1 byte for data type
+            # receive data request
             data_type = server.receive()
 
+            # expected SERVER_REQUEST; size needs to be 1 byte
             if len(data_type) == 1 and data_type == server.SERVER_REQUEST:
                 server.send_byte(server.SERVER_READY)
 
-                # receive 3-byte data frame
+                # receive data frame
                 data = server.receive()
 
                 if len(data) == 3:
                     servo_control.set_values(data[0], data[1], data[2])
                 else:
+                    # error in incoming data; start next loop cycle
                     continue
 
-                # if last bit of byte 3 is set cancel connection
+                # check byte 3 bit 2^0: terminate session if set
                 if data[2] & 1 == 1:
                     print("\nSession is going to be terminated.")
                     server.send_byte(server.SERVER_CONNECTION_CLOSED)
                     time.sleep(0.2)
                     server.close_connection()
 
-                # if second-last bit of byte 3 is set,
-                # terminate communication and server
+                # check byte 3 bit 2^1: terminate session and server if set
                 if data[2] & 2 == 2:
                     print("\nTerminating session and shutting down server application")
                     server.termination_pending = True
                     server.send_byte(server.SERVER_CONNECTION_CLOSED)
                     server.close_connection()
 
+                # no exit bit set, so send SERVER_FINISHED
                 else:
                     # send done code 0x12
                     print("Data: 0x{0:x};0x{1:x};0x{2:x}\r".format(data[0], data[1], data[2]), end="", flush=True)
                     server.send_byte(server.SERVER_FINISHED)
 
             else:
-                # not known, do nothing
+                # unknown data type, do nothing
                 pass
 
+    # unbind server and close application
     server.__del__()
     print("Server closed.")
