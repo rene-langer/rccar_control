@@ -1,5 +1,5 @@
-import servo as servo
-import server as server
+import servo
+import server
 
 import time
 
