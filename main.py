@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
                 # if second-last bit of byte 3 is set,
                 # terminate communication and server
-                if data[2] & 2 == 2:
+                elif data[2] & 2 == 2:
                     print("\nTerminating session and shutting down server application")
                     server.termination_pending = True
                     server.send_byte(server.SERVER_CONNECTION_CLOSED)
