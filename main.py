@@ -28,7 +28,8 @@ if __name__ == '__main__':
           "### Server is going to be hosted on {}\n".format(IP_ADDRESS) +
           "### ")
 
-    servo_control = servo.Servo()
+    #servo_control = servo.Servo()
+    servo_control = servo.PwmServo()
     server = server.Server(IP_ADDRESS, 9999)
 
     print("### Initialization finished in {:1.4f} seconds".format((time.time()-start_time)))
