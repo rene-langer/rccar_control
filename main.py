@@ -10,12 +10,6 @@ CHANGELOG:
 #2: Edited constant byte values to server constants. See #1 in server class
 """
 
-
-def debug_print(message: str, mode: bool):
-    if mode:
-        print(message)
-
-
 if __name__ == '__main__':
     IP_ADDRESS = "192.168.4.1"
     DEBUG = False
