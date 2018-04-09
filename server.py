@@ -64,7 +64,7 @@ class Server(socket.socket):
             print("\tAccepted connection from {}:{}".format(self.client_ip, self.client_port))
             self.connection_active = True
         else:
-            print("Cannot accept connection due another connection is still active")
+            print("E: Cannot accept connection due another connection is still active")
 
     def close_connection(self):
         if self.connection_active:
@@ -74,7 +74,7 @@ class Server(socket.socket):
             self.connection_active = False
             print("Connection to client closed")
         else:
-            print("Could not close connection: No connection established.")
+            print("E: Could not close connection: No connection established. !!!")
 
     def __del__(self):
         self.close()

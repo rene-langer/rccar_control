@@ -1,5 +1,5 @@
-import servo as servo
-import server as server
+import servo
+import server
 
 import time
 
@@ -33,11 +33,8 @@ if __name__ == '__main__':
         # wait until a connection is established
         server.await_connection()
 
-        # to be removed after test
-        # (conn, (ip, port)) = server.accept()
-
         while server.connection_active:
-            # receive a maximum of 1 byte for data type
+
             data_type = server.receive()
 
             if len(data_type) == 1 and data_type == server.SERVER_REQUEST:
@@ -59,8 +56,8 @@ if __name__ == '__main__':
                     server.close_connection()
 
                 # if second-last bit of byte 3 is set,
-                # terminate communication and server
-                if data[2] & 2 == 2:
+                # terminate communication and serve
+                elif data[2] & 2 == 2:
                     print("\nTerminating session and shutting down server application")
                     server.termination_pending = True
                     server.send_byte(server.SERVER_CONNECTION_CLOSED)
@@ -68,12 +65,11 @@ if __name__ == '__main__':
 
                 else:
                     # send done code 0x12
-                    print("Data: 0x{0:x};0x{1:x};0x{2:x}\r".format(data[0], data[1], data[2]), end="", flush=True)
+                    print("\t\tData: 0x{0:x};0x{1:x};0x{2:x}\r".format(data[0], data[1], data[2]), end="", flush=True)
                     server.send_byte(server.SERVER_FINISHED)
 
             else:
-                # not known, do nothing
-                pass
+                print("Unexpected Type:{} \r".format(data_type))
 
     server.__del__()
     print("Server closed.")
