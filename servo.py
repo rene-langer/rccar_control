@@ -2,14 +2,16 @@ import RPi.GPIO as GPIO
 import Adafruit_PCA9685
 
 """
-Version 0.6
-
-CHANGELOG
-#1: Added setwarnings(False) in first line of init() to suppress 'Pin already used' on startup
+Version 0.7d -- 10.04.2018
 """
+ACCELERATION_CHANNEL = 0
+STEERING_CHANNEL = 1
+
+MIDDLE_POSITION = 1500 / 20000
 
 
 class PwmServo:
+
     def __init__(self):
 
         GPIO.setwarnings(False)
@@ -38,8 +40,10 @@ class PwmServo:
         self.pwm.set_pwm_freq(50)
 
         # set default value 1.5ms
-        self.pwm.set_pwm(0, 0, int(50 * 0.0015 * 4096))
-        self.pwm.set_pwm(1, 0, int(50 * 0.0015 * 4096))
+        # self.pwm.set_pwm(Constants.ACCELERATION_CHANNEL, 0, int(0.075 * 4096))
+        # self.pwm.set_pwm(Constants.STEERING_CHANNEL, 0, int(0.075 * 4096))
+        self.__set_duty_cycle(STEERING_CHANNEL, MIDDLE_POSITION)
+        self.__set_duty_cycle(ACCELERATION_CHANNEL, MIDDLE_POSITION)
 
     def set_values(self, acceleration, steering, controls):
         self.__set_acceleration(acceleration)
@@ -51,46 +55,34 @@ class PwmServo:
         on_clockcycles = 4096 * (on_time_us / 20000)
         self.pwm.set_pwm(channel, 0, int(on_clockcycles))
 
+    def __set_duty_cycle(self, channel: int, dc: float):
+        duty = int(dc*4096)
+        self.pwm.set_pwm(channel, 0, duty)
+
     def __set_acceleration(self, acceleration):
         # PWM for acceleration
         if 125 < acceleration < 130:
             # don´t accelerate
-            self.__set_on_time(0, 1500)
+            self.__set_duty_cycle(ACCELERATION_CHANNEL, MIDDLE_POSITION)
         else:
             # accelerate
-            self.__set_on_time(0, 1100+800*(acceleration/255))
+            self.__set_duty_cycle(ACCELERATION_CHANNEL, 1100+800*(acceleration/255) / 20000)
 
     def __set_steering(self, control):
         # PWM for controlling
         if 125 < control < 130:
             # don´t control to any side
-            self.__set_on_time(1, 1500)
+            #self.__set_on_time(1, 1500)
+            self.__set_duty_cycle(STEERING_CHANNEL, MIDDLE_POSITION)
         else:
             # control to any side
-            self.__set_on_time(1, 1100 + 800*(255-control)/255)
+            self.__set_duty_cycle(STEERING_CHANNEL, (1100 + 800*(255-control)/255) / 20000)
 
     def __lights(self, other, control):
-        if other & 128:
-            GPIO.output(self.lightPin, GPIO.LOW)
-            if control > 190:
-                GPIO.output(self.corneringRight, GPIO.LOW)
-                GPIO.output(self.corneringLeft, GPIO.HIGH)
-            elif control < 65:
-                GPIO.output(self.corneringRight, GPIO.HIGH)
-                GPIO.output(self.corneringLeft, GPIO.LOW)
-            else:
-                GPIO.output(self.corneringRight, GPIO.HIGH)
-                GPIO.output(self.corneringLeft, GPIO.HIGH)
-        else:
-            GPIO.output(self.lightPin, GPIO.HIGH)
-            GPIO.output(self.corneringRight, GPIO.HIGH)
-            GPIO.output(self.corneringLeft, GPIO.HIGH)
+        pass
 
     def __horn(self, other):
-        if other & 64:
-            GPIO.output(self.horn, GPIO.LOW)
-        else:
-            GPIO.output(self.horn, GPIO.HIGH)
+        pass
 
     def __del__(self):
         GPIO.cleanup()
