@@ -3,12 +3,6 @@ import server
 
 import time
 
-"""
-CHANGELOG:
-
-#1: Removed 1 second delay before sending SERVER_CONNECTION_CLOSED at disconnect
-#2: Edited constant byte values to server constants. See #1 in server class
-"""
 
 if __name__ == '__main__':
     IP_ADDRESS = "192.168.4.1"
@@ -18,15 +12,14 @@ if __name__ == '__main__':
 
     print("##########################################################\n"
           "### RC-Car\n"
-          "### Server Version 0.6.1 - Expecting client version 0.6\n"
+          "### Server Version 0.7.1b - Expecting client version 0.7b\n"
           "### Server is going to be hosted on {}\n".format(IP_ADDRESS) +
-          "### ")
+          "### \n")
 
-    #servo_control = servo.Servo()
     servo_control = servo.PwmServo()
     server = server.Server(IP_ADDRESS, 9999)
 
-    print("### Initialization finished in {:1.4f} seconds".format((time.time()-start_time)))
+    print("### Initialization finished in {:1.4f} seconds\n".format((time.time()-start_time)))
     print("##########################################################\n\n")
     while not server.termination_pending:
         print("\tWaiting for incoming connection...")
