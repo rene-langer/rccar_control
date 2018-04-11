@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import Adafruit_PCA9685
+import numpy as np
 
 """
 Version 0.7d -- 10.04.2018
@@ -7,49 +8,55 @@ Version 0.7d -- 10.04.2018
 ACCELERATION_CHANNEL = 0
 STEERING_CHANNEL = 1
 
+HEADLIGHTS = 10
+CURVELIGHT_RIGHT = 9
+CURVELIGHT_LEFT = 8
+
+HORN = 11
+BACKLIGHTS = 15
+
+BR_LIGHTS_WHITE = 12
+BR_LIGHTS_RED = 13
+
 MIDDLE_POSITION = 1500 / 20000
 
 
 class PwmServo:
 
+    def __compute_steering(self):
+        x = np.linspace(0, 255, 256)
+        self.steering_values = []
+        p1 = 9.679e-09
+        p2 = -3.7022e-06
+        p3 = 0.00047155
+        p4 = 0.055
+        for i in x:
+            self.steering_values.append(p1*i*i*i + p2*i*i + p3*i + p4)
+
     def __init__(self):
-
-        GPIO.setwarnings(False)
-        GPIO.cleanup()
-        
-        # Rename Pins
-        self.lightPin = 18
-        self.corneringRight = 11
-        self.corneringLeft = 13
-        self.horn = 12
-
-        GPIO.setmode(GPIO.BOARD)
-
-        # Define light pins
-        GPIO.setup(self.lightPin, GPIO.OUT)
-        GPIO.setup(self.corneringRight, GPIO.OUT)
-        GPIO.setup(self.corneringLeft, GPIO.OUT)
-        GPIO.setup(self.horn, GPIO.OUT)
-
-        GPIO.output(self.lightPin, GPIO.HIGH)
-        GPIO.output(self.corneringRight, GPIO.HIGH)
-        GPIO.output(self.corneringLeft, GPIO.HIGH)
-        GPIO.output(self.horn, GPIO.HIGH)
 
         self.pwm = Adafruit_PCA9685.PCA9685(address=0x40)
         self.pwm.set_pwm_freq(50)
 
-        # set default value 1.5ms
-        # self.pwm.set_pwm(Constants.ACCELERATION_CHANNEL, 0, int(0.075 * 4096))
-        # self.pwm.set_pwm(Constants.STEERING_CHANNEL, 0, int(0.075 * 4096))
+        self.__compute_steering()
+
+        # set default values
         self.__set_duty_cycle(STEERING_CHANNEL, MIDDLE_POSITION)
         self.__set_duty_cycle(ACCELERATION_CHANNEL, MIDDLE_POSITION)
+        self.old_controls = 0
+        self.__lights(self.old_controls, False, 127)
+        self.__horn(self.old_controls)
 
     def set_values(self, acceleration, steering, controls):
         self.__set_acceleration(acceleration)
         self.__set_steering(steering)
+        if acceleration < 120:
+            back = True
+        else:
+            back = False
+
         self.__horn(controls)
-        self.__lights(controls, steering)
+        self.__lights(controls, back, steering)
 
     def __set_on_time(self, channel: int, on_time_us: int):
         on_clockcycles = 4096 * (on_time_us / 20000)
@@ -61,114 +68,61 @@ class PwmServo:
 
     def __set_acceleration(self, acceleration):
         # PWM for acceleration
-        if 125 < acceleration < 130:
+        if 115 < acceleration < 140:
             # don´t accelerate
             self.__set_duty_cycle(ACCELERATION_CHANNEL, MIDDLE_POSITION)
         else:
             # accelerate
-            self.__set_duty_cycle(ACCELERATION_CHANNEL, 1100+800*(acceleration/255) / 20000)
+            self.__set_duty_cycle(ACCELERATION_CHANNEL, (1100+800*(acceleration/255)) / 20000)
 
     def __set_steering(self, control):
         # PWM for controlling
         if 125 < control < 130:
             # don´t control to any side
-            #self.__set_on_time(1, 1500)
             self.__set_duty_cycle(STEERING_CHANNEL, MIDDLE_POSITION)
         else:
             # control to any side
-            self.__set_duty_cycle(STEERING_CHANNEL, (1100 + 800*(255-control)/255) / 20000)
+            self.__set_duty_cycle(STEERING_CHANNEL, self.steering_values[255-control])
 
-    def __lights(self, other, control):
-        pass
-
-    def __horn(self, other):
-        pass
-
-    def __del__(self):
-        GPIO.cleanup()
-
-
-class Servo:
-
-    def __init__(self):
-        GPIO.setwarnings(False)
-        GPIO.cleanup()
-        # Rename Pins
-        self.accelerationPin = 15
-        self.controlPin = 16
-        self.lightPin = 18
-        self.corneringRight = 11
-        self.corneringLeft = 13
-        self.horn = 12
-
-        GPIO.setmode(GPIO.BOARD)
-
-        # Define Pin 22 and 23 as output
-        GPIO.setup(self.accelerationPin, GPIO.OUT)
-        GPIO.setup(self.controlPin, GPIO.OUT)
-        # Define light pins
-        GPIO.setup(self.lightPin, GPIO.OUT)
-        GPIO.setup(self.corneringRight, GPIO.OUT)
-        GPIO.setup(self.corneringLeft, GPIO.OUT)
-        GPIO.setup(self.horn, GPIO.OUT)
-
-        self.acc = GPIO.PWM(self.accelerationPin, 50)
-        self.acc.start(1.5/20*100)
-
-        self.con = GPIO.PWM(self.controlPin, 50)
-        self.con.start(1.5/20*100)
-
-        GPIO.output(self.lightPin, GPIO.HIGH)
-        GPIO.output(self.corneringRight, GPIO.HIGH)
-        GPIO.output(self.corneringLeft, GPIO.HIGH)
-        GPIO.output(self.horn, GPIO.HIGH)
-
-    def set_values(self, acceleration, steering, controls):
-        self.__set_acceleration(acceleration)
-        self.__set_steering(steering)
-        self.__horn(controls)
-        self.__lights(controls, steering)
-
-    def __set_acceleration(self, acceleration):
-        # PWM for acceleration
-        if 125 < acceleration < 130:
-            # don´t accelerate
-            self.acc.ChangeDutyCycle(1.5/20*100)
-        else:
-            # accelerate
-            self.acc.ChangeDutyCycle((1.1+0.8*(acceleration/255))/20*100)
-
-    def __set_steering(self, control):
-        # PWM for controlling
-        if 125 < control < 130:
-            # don´t control to any side
-            self.con.ChangeDutyCycle(1.5 / 20 * 100)
-        else:
-            # control to any side
-            self.con.ChangeDutyCycle((1.1+0.8*((255-control)/255))/20*100)
-
-    def __lights(self, other, control):
+    def __lights(self, other: int, is_reverse: bool, steering: int):
         if other & 128:
-            GPIO.output(self.lightPin, GPIO.LOW)
-            if control > 190:
-                GPIO.output(self.corneringRight, GPIO.LOW)
-                GPIO.output(self.corneringLeft, GPIO.HIGH)
-            elif control < 65:
-                GPIO.output(self.corneringRight, GPIO.HIGH)
-                GPIO.output(self.corneringLeft, GPIO.LOW)
-            else:
-                GPIO.output(self.corneringRight, GPIO.HIGH)
-                GPIO.output(self.corneringLeft, GPIO.HIGH)
+            light = True
         else:
-            GPIO.output(self.lightPin, GPIO.HIGH)
-            GPIO.output(self.corneringRight, GPIO.HIGH)
-            GPIO.output(self.corneringLeft, GPIO.HIGH)
+            light = False
+
+        if light:
+            self.pwm.set_pwm(HEADLIGHTS, 0, 4000)
+            self.pwm.set_pwm(BACKLIGHTS, 0, 4000)
+            if not is_reverse:
+                self.pwm.set_pwm(BR_LIGHTS_RED, 0, 4000)
+        else:
+            self.pwm.set_pwm(HEADLIGHTS, 0, 0)
+            self.pwm.set_pwm(BACKLIGHTS, 0, 0)
+            self.pwm.set_pwm(BR_LIGHTS_RED, 0, 0)
+
+        if is_reverse:
+            self.pwm.set_pwm(BR_LIGHTS_RED, 0, 0)
+            self.pwm.set_pwm(BR_LIGHTS_WHITE, 0, 4000)
+        else:
+            self.pwm.set_pwm(BR_LIGHTS_WHITE, 0, 0)
+
+        if steering > 140:
+            self.pwm.set_pwm(CURVELIGHT_RIGHT, 0, 4000)
+            self.pwm.set_pwm(CURVELIGHT_LEFT, 0, 750)
+        elif steering < 120:
+            self.pwm.set_pwm(CURVELIGHT_LEFT, 0, 4000)
+            self.pwm.set_pwm(CURVELIGHT_RIGHT, 0, 750)
+        else:
+            self.pwm.set_pwm(CURVELIGHT_RIGHT, 0, 750)
+            self.pwm.set_pwm(CURVELIGHT_LEFT, 0, 750)
 
     def __horn(self, other):
         if other & 64:
-            GPIO.output(self.horn, GPIO.LOW)
+            self.pwm.set_pwm(HORN, 0, 4090)
         else:
-            GPIO.output(self.horn, GPIO.HIGH)
+            self.pwm.set_pwm(HORN, 0, 0)
+        pass
 
     def __del__(self):
-        GPIO.cleanup()
+        self.pwm.set_pwm(CURVELIGHT_LEFT, 0, 0)
+        self.pwm.set_pwm(CURVELIGHT_RIGHT, 0, 0)
