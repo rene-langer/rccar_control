@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import Adafruit_PCA9685
+import time
 import numpy as np
 
 """
@@ -39,28 +40,33 @@ class PwmServo:
         self.pwm.set_pwm_freq(50)
 
         self.__compute_steering()
-
+        self.back = False
+        self.old_back = False
         # set default values
         self.__set_duty_cycle(STEERING_CHANNEL, MIDDLE_POSITION)
         self.__set_duty_cycle(ACCELERATION_CHANNEL, MIDDLE_POSITION)
-        self.old_controls = 0
-        self.__lights(self.old_controls, False, 127)
-        self.__horn(self.old_controls)
+        self.__lights(0, False, 127)
+        self.__horn(0)
 
     def set_values(self, acceleration, steering, controls):
-        self.__set_acceleration(acceleration)
-        self.__set_steering(steering)
+
         if acceleration < 120:
-            back = True
+            self.old_back = self.back
+            self.back = True
         else:
-            back = False
+            self.old_back = self.back
+            self.back = False
+
+        if self.back != self.old_back:
+            self.__set_acceleration(127)
+            time.sleep(0.2)
+
+        self.__set_acceleration(acceleration)
+
+        self.__set_steering(steering)
 
         self.__horn(controls)
-        self.__lights(controls, back, steering)
-
-    def __set_on_time(self, channel: int, on_time_us: int):
-        on_clockcycles = 4096 * (on_time_us / 20000)
-        self.pwm.set_pwm(channel, 0, int(on_clockcycles))
+        self.__lights(controls, self.back, steering)
 
     def __set_duty_cycle(self, channel: int, dc: float):
         duty = int(dc*4096)
@@ -91,7 +97,7 @@ class PwmServo:
             light = False
 
         if light:
-            self.pwm.set_pwm(HEADLIGHTS, 0, 4000)
+            self.pwm.set_pwm(HEADLIGHTS, 0, 3000)
             self.pwm.set_pwm(BACKLIGHTS, 0, 4000)
             if not is_reverse:
                 self.pwm.set_pwm(BR_LIGHTS_RED, 0, 4000)
