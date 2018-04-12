@@ -17,6 +17,8 @@ class Server(socket.socket):
     SERVER_READY = b'\x11'
     SERVER_FINISHED = b'\x12'
 
+    SERVER_BATTERY_REQUEST = b'\x20'
+
     def __init__(self, host: str, port: int):
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
         self.bind_error = True
