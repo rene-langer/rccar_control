@@ -1,5 +1,7 @@
 import socket
 import time
+import os
+import threading
 
 """
 TCPSocket Server: Version 1.0
@@ -18,6 +20,10 @@ class Server(socket.socket):
     SERVER_FINISHED = b'\x12'
 
     SERVER_BATTERY_REQUEST = b'\x20'
+
+    def camera(self):
+        os.system("raspivid -o - -t 0 -w 1280 -h 720 -fps 25 -rot 180 |cvlc stream:///dev/stdin --sout "
+                  "'#standard{access=http,mux=ts,dst=:8090}' :demux=h264")
 
     def __init__(self, host: str, port: int):
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,6 +47,9 @@ class Server(socket.socket):
                     pass
                 self.running = False
                 time.sleep(1)
+
+        cam = threading.Thread(name="camera", target=self.camera)
+        cam.start()
 
         self.conn = None
         self.client_ip = None
