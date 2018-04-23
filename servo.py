@@ -23,6 +23,21 @@ MIDDLE_POSITION = 1500 / 20000
 
 
 class PwmServo:
+    # def __compute_acceleration(self):
+    #     x = np.linspace(0, 255, 256)
+    #     self.acceleration_values = []
+    #
+    #     p1 = -9.9343e-10
+    #     p2 = 6.4188e-07
+    #     p3 = -0.00016455
+    #     p4 = 0.020918
+    #     p5 = -1.3184
+    #     p6 = 33.027
+    #
+    #     for i in x:
+    #         self.acceleration_values.append((8 * i / 255 + 11) / 200)
+    #     for i in np.linspace(110, 150, 41):
+    #         self.acceleration_values[int(i)] = (p1*i**5 + p2*i**4 + p3*i**3 + p4*i**2 + p5*i + p6)
 
     def __compute_steering(self):
         x = np.linspace(0, 255, 256)
@@ -40,6 +55,7 @@ class PwmServo:
         self.pwm.set_pwm_freq(50)
 
         self.__compute_steering()
+        # self.__compute_acceleration()
         self.back = False
         self.old_back = False
         # set default values
@@ -51,18 +67,11 @@ class PwmServo:
     def set_values(self, acceleration, steering, controls):
 
         if acceleration < 120:
-            self.old_back = self.back
             self.back = True
         else:
-            self.old_back = self.back
             self.back = False
 
-        if self.back != self.old_back:
-            self.__set_acceleration(127)
-            time.sleep(0.2)
-
         self.__set_acceleration(acceleration)
-
         self.__set_steering(steering)
 
         self.__horn(controls)
@@ -80,6 +89,7 @@ class PwmServo:
         else:
             # accelerate
             self.__set_duty_cycle(ACCELERATION_CHANNEL, (1100+800*(acceleration/255)) / 20000)
+            # self.__set_duty_cycle(ACCELERATION_CHANNEL, self.acceleration_values[acceleration])
 
     def __set_steering(self, control):
         # PWM for controlling
