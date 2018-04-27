@@ -2,12 +2,37 @@ import servo
 import server
 import RPi.GPIO as GPIO
 
-import time
+import time, threading
+
+
+class TPSCounter(object):
+    def __init__(self, servos: servo.PwmServo):
+        self.last_second = 0
+        self.current = 0
+        self.servo = servos
+
+    def inc(self):
+        self.current += 1
+
+    def __check(self):
+        if self.last_second < 5:
+            self.servo.set_values(127, 127, 0)
+
+    def __reset(self):
+        self.current = 0
+
+    def _run(self):
+        self.last_second = self.current
+        self.__reset()
+        self.__check()
+        threading.Timer(1.0, self._run).start()
+
+    def start(self):
+        threading.Timer(1.0, self._run).start()
 
 
 if __name__ == '__main__':
-    IP_ADDRESS = "192.168.4.1"
-    DEBUG = False
+    IP_ADDRESS = "192.168.5.1"
 
     start_time = time.time()
     GPIO.setmode(GPIO.BOARD)
@@ -25,11 +50,14 @@ if __name__ == '__main__':
     servo_control = servo.PwmServo()
     server = server.Server(IP_ADDRESS, 9999)
 
+    tps = TPSCounter(servo_control)
+    tps.start()
+
     print("### Initialization finished in {:1.4f} seconds".format((time.time()-start_time)))
     print("##########################################################\n\n")
     while not server.termination_pending:
         print("\tWaiting for incoming connection...")
-        led.ChangeDutyCycle(1)
+        led.ChangeDutyCycle(0.5)
 
         # wait until a connection is established
         server.await_connection()
@@ -46,6 +74,8 @@ if __name__ == '__main__':
 
                 if len(data) == 3:
                     servo_control.set_values(data[0], data[1], data[2])
+                    tps.inc()
+
                 else:
                     continue
 
@@ -66,7 +96,8 @@ if __name__ == '__main__':
 
                 else:
                     # send done code 0x12
-                    print("\t\tData: 0x{0:x};0x{1:x};0x{2:x}\r".format(data[0], data[1], data[2]), end="", flush=True)
+                    print("TPS:{3}\tData: 0x{0:x};0x{1:x};0x{2:x}\r".format(data[0], data[1], data[2], tps.last_second)
+                          , end="", flush=True)
                     server.send_byte(server.SERVER_FINISHED)
 
             elif len(data_type) == 1 and data_type == server.SERVER_BATTERY_REQUEST:
